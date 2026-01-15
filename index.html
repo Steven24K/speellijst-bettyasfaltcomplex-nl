@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Agenda Overzicht</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .voorstelling { border-bottom: 1px solid #ccc; padding: 10px 0; display: flex; gap: 15px; }
+        .datum { font-weight: bold; color: #cc0000; min-width: 90px; }
+        .titel { flex-grow: 1; }
+        .tijd { color: #666; }
+        .button-container { text-align: center; margin-top: 30px; }
+        .reserveren-knop { 
+            background-color: #000; color: #fff; padding: 15px 25px; 
+            text-decoration: none; font-weight: bold; border-radius: 5px; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="agenda-output">Laden...</div>
+
+    <div class="button-container">
+        <a href="https://www.bettyasfaltcomplex.nl/agenda.php" target="_top" class="reserveren-knop">
+            Reserveer kaarten op bettyasfaltcomplex.nl
+        </a>
+    </div>
+
+    <script>
+        async function fetchEnParse() {
+            const url = 'https://www.bettyasfaltcomplex.nl/agenda.php';
+            // Gebruik van een proxy is noodzakelijk op GitHub Pages ivm CORS
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+            try {
+                const response = await fetch(proxyUrl);
+                const json = await response.json();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(json.contents, 'text/html');
+                
+                // Zoek alle rijen in de originele HTML
+                const rows = doc.querySelectorAll('.agendarow');
+                let outputHtml = '';
+
+                rows.forEach(row => {
+                    const datum = row.querySelector('.agendadatum')?.innerText.trim();
+                    const titel = row.querySelector('.agendaproductie a')?.innerText.trim();
+                    const tijd = row.querySelector('.agendatijd')?.innerText.trim();
+
+                    // Alleen rijen toevoegen die echt een voorstelling bevatten
+                    if (datum && titel) {
+                        outputHtml += `
+                            <div class="voorstelling">
+                                <div class="datum">${datum}</div>
+                                <div class="titel">
+                                    <strong>${titel}</strong><br>
+                                    <span class="tijd">${tijd}</span>
+                                </div>
+                            </div>`;
+                    }
+                });
+
+                document.getElementById('agenda-output').innerHTML = outputHtml || 'Geen voorstellingen gevonden.';
+            } catch (err) {
+                document.getElementById('agenda-output').innerHTML = 'Fout bij het ophalen van de agenda.';
+            }
+        }
+
+        fetchEnParse();
+    </script>
+</body>
+</html>
