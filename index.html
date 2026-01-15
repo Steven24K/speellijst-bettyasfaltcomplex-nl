@@ -1,22 +1,57 @@
 <!DOCTYPE html>
 <html lang="nl">
+
 <head>
     <meta charset="UTF-8">
     <title>Agenda Overzicht</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .voorstelling { border-bottom: 1px solid #ccc; padding: 10px 0; display: flex; gap: 15px; }
-        .datum { font-weight: bold; color: #cc0000; min-width: 90px; }
-        .titel { flex-grow: 1; }
-        .tijd { color: #666; }
-        .button-container { text-align: center; margin-top: 30px; }
-        .reserveren-knop { 
-            background-color: #000; color: #fff; padding: 15px 25px; 
-            text-decoration: none; font-weight: bold; border-radius: 5px; 
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .voorstelling {
+            border-bottom: 1px solid #ccc;
+            padding: 10px 0;
+            display: flex;
+            gap: 15px;
+        }
+
+        .datum {
+            font-weight: bold;
+            color: #cc0000;
+            min-width: 90px;
+        }
+
+        .titel {
+            flex-grow: 1;
+        }
+
+        .tijd {
+            color: #666;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .reserveren-knop {
+            background-color: #000;
+            color: #fff;
+            padding: 15px 25px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
         }
     </style>
 </head>
+
 <body>
+
+    <h1>Agenda & Speellijst</h1>
 
     <div id="agenda-output">Laden...</div>
 
@@ -33,11 +68,36 @@
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
             try {
-                const response = await fetch(proxyUrl);
-                const json = await response.json();
                 const parser = new DOMParser();
+                const CACHE_KEY = 'AGENDA'
+                let json = { contents: "" };
+                let should_fetch = false;
+                const cached_doc = window.localStorage.getItem(CACHE_KEY);
+
+                if (cached_doc) {
+                    const parsed_cache = JSON.parse(cached_doc);
+                    const cached_date = parsed_cache.lastUpdate;
+                    if (Date.now() - cached_date > 12 * 60 * 60 * 1000) {
+                        should_fetch = true;
+                    } else {
+                        json.contents = parsed_cache.html;
+                    }
+                }
+                else {
+                    should_fetch = true;
+                }
+
+                if (should_fetch) {
+                    const response = await fetch(proxyUrl);
+                    json = await response.json();
+                    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ html: json.contents, lastUpdate: Date.now() }));
+                }
+
+
                 const doc = parser.parseFromString(json.contents, 'text/html');
-                
+
+
+
                 // Zoek alle rijen in de originele HTML
                 const rows = doc.querySelectorAll('.agendarow');
                 let outputHtml = '';
@@ -47,10 +107,13 @@
                     const titel = row.querySelector('.agendaproductie a')?.innerText.trim();
                     const tijd = row.querySelector('.agendatijd')?.innerText.trim();
 
+                    const dag_van_de_week = row.querySelector('.agendadag')?.innerText.trim();
+
                     // Alleen rijen toevoegen die echt een voorstelling bevatten
                     if (datum && titel) {
                         outputHtml += `
                             <div class="voorstelling">
+                                <div class="weekdag">${dag_van_de_week}</div>
                                 <div class="datum">${datum}</div>
                                 <div class="titel">
                                     <strong>${titel}</strong><br>
@@ -69,4 +132,5 @@
         fetchEnParse();
     </script>
 </body>
+
 </html>
